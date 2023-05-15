@@ -1,0 +1,64 @@
+# Name of the workflow
+name: Deploy
+
+# Trigger the workflow when a push event occurs on the main branch
+on:
+  push:
+    branches:
+      - main
+
+# Define the jobs to be executed
+jobs:
+  # Build job
+  build:
+    # Name of the job
+    name: Build
+    # Operating system to run the job on
+    runs-on: ubuntu-latest
+    # Steps to be executed in the job
+    steps:
+      # Checkout the repository code
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      # Setup Node.js version 16
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      # Install dependencies
+      - name: Install dependencies
+        uses: bahmutov/npm-install@v1
+      # Build the project
+      - name: Build project
+        run: npm run build
+      # Upload the production-ready build files to an artifact
+      - name: Upload production-ready build files
+        uses: actions/upload-artifact@v2
+        with:
+          name: production-files
+          path: ./dist
+
+  # Deploy job
+  deploy:
+    # Name of the job
+    name: Deploy
+    # Define that this job needs the build job to complete successfully
+    needs: build
+    # Operating system to run the job on
+    runs-on: ubuntu-latest
+    # Define that this job should only run if the push event occurred on the main branch
+    if: github.ref == 'refs/heads/main'
+    # Steps to be executed in the job
+    steps:
+      # Download the production-ready build files artifact
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: production-files
+          path: ./dist
+      # Deploy the build files to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
